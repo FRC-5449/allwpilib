@@ -3,6 +3,7 @@
 // the WPILib BSD license file in the root directory of this project.
 
 #include "glass/other/Field2D.h"
+#include "glass/imgui_plot.h"
 
 #include <cmath>
 #include <memory>
@@ -29,17 +30,23 @@ using namespace glass;
 namespace gui = wpi::gui;
 
 namespace {
+  const int buf_size = 512;
+  static int count = -1;
+  static float x_data[buf_size];
+  static float y_data1[buf_size];
+  const float *xdata = x_data;
+  const float* y_data[] = {y_data1};
 
-// Per-frame field data (not persistent)
-struct FieldFrameData {
-  // in screen coordinates
-  ImVec2 imageMin;
-  ImVec2 imageMax;
-  ImVec2 min;
-  ImVec2 max;
+// // Per-frame field data (not persistent)
+// struct FieldFrameData {
+//   // in screen coordinates
+//   ImVec2 imageMin;
+//   ImVec2 imageMax;
+//   ImVec2 min;
+//   ImVec2 max;
 
-  float scale;  // scaling from field units to screen units
-};
+//   float scale;  // scaling from field units to screen units
+// };
 
 // Object drag state
 struct ObjectDragState {
@@ -414,7 +421,7 @@ void ObjectFrameData::UpdateFrameData() {
   double rot = GetRotation();
   float cos_a = std::cos(-rot);
   float sin_a = std::sin(-rot);
-
+  // left top -> right top -> right bottom -> left bottom
   m_corners[0] = center + ImRotate(ImVec2(-length2, -width2), cos_a, sin_a);
   m_corners[1] = center + ImRotate(ImVec2(length2, -width2), cos_a, sin_a);
   m_corners[2] = center + ImRotate(ImVec2(length2, width2), cos_a, sin_a);
@@ -574,6 +581,8 @@ void glass::DisplayField2DSettings(Field2DModel* model) {
 }
 
 void glass::DisplayField2D(Field2DModel* model, const ImVec2& contentSize) {
+
+  ImU32 colors[] = {ImColor(0, 255, 0)};
   auto& storage = GetStorage();
   auto field = storage.GetData<FieldInfo>();
   if (!field) {
@@ -615,7 +624,17 @@ void glass::DisplayField2D(Field2DModel* model, const ImVec2& contentSize) {
       ++i;
       ObjectFrameData ofd{objModel, ffd, *objGroup->m_pWidth,
                           *objGroup->m_pLength};
-
+      if(i==1 && (count==-1 || count <511)){
+        
+        count++;
+        if((1 < (ofd.m_center.x - x_data[count -1]) ||  -1 > (ofd.m_center.x - x_data[count -1])) ||
+           (1 < (ofd.m_center.y - y_data1[count -1]) &&  -1 > (ofd.m_center.y - y_data1[count -1]))){
+          x_data[count] = ofd.m_center.x;
+          y_data1[count] = ofd.m_center.y;
+        }else{
+          count--;
+        }
+      }
       int hitCorner = 0;
       if (objGroup->m_dragState.object == 0 ||
           objGroup->m_dragState.object == i) {
@@ -630,6 +649,27 @@ void glass::DisplayField2D(Field2DModel* model, const ImVec2& contentSize) {
     });
     PopID();
   });
+  
+
+
+  imgplot::PlotConfig conf;
+  conf.values.xs = xdata;
+  conf.values.count = buf_size;
+  conf.values.ys_list = y_data;  // use ys_list to draw several lines simultaneously
+  conf.values.ys_count = 1;
+  conf.values.colors = colors;
+  conf.scale.min = 0;
+  conf.scale.max = ffd.max.y-ffd.min.y;
+  conf.tooltip.show = true;
+  conf.grid_x.show = true;
+  conf.grid_x.size = 100;
+  conf.grid_x.subticks = 5;
+  conf.grid_y.show = true;
+  conf.grid_y.size = 50;
+  conf.grid_y.subticks = 1;
+  conf.frame_size = ImVec2(ffd.max.x-ffd.min.x, ffd.max.y-ffd.min.y);
+  conf.ffd=ffd;
+  imgplot::Plot("plot1", conf);
 }
 
 void Field2DView::Display() {
@@ -639,4 +679,12 @@ void Field2DView::Display() {
   }
   DisplayField2D(m_model, ImGui::GetWindowContentRegionMax() -
                               ImGui::GetWindowContentRegionMin());
+}
+
+void Field2DView::Hidden(){
+  count = -1;
+  for(int i=0;i<buf_size;i++){    
+    x_data[i] = 0;
+    y_data1[i] = 0;
+  }
 }

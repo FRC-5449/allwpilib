@@ -47,9 +47,22 @@ class Field2DView : public View {
   explicit Field2DView(Field2DModel* model) : m_model{model} {}
 
   void Display() override;
+  void Hidden() override;
 
  private:
   Field2DModel* m_model;
+};
+
+
+// Per-frame field data (not persistent)
+struct FieldFrameData {
+  // in screen coordinates
+  ImVec2 imageMin;
+  ImVec2 imageMax;
+  ImVec2 min;
+  ImVec2 max;
+
+  float scale;  // scaling from field units to screen units
 };
 
 }  // namespace glass
