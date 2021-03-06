@@ -20,33 +20,6 @@ void Plot(const char* label, const PlotConfig& conf) {
     const ImU32* colors = conf.values.colors;
     auto drawList = ImGui::GetWindowDrawList();
     glass::FieldFrameData inner_bb=conf.ffd;
-    // if (conf.values.ys != nullptr) { // draw only a single plot
-    //     ys_list = &conf.values.ys;
-    //     ys_count = 1;
-    //     colors = &conf.values.color;
-    // }
-
-    // ImGuiContext& g = *GImGui;
-    // const ImGuiStyle& style = g.Style;
-
-    // const ImRect frame_bb(
-    //     window->DC.CursorPos,
-    //     window->DC.CursorPos + conf.frame_size);
-    // const ImRect inner_bb(
-    //     frame_bb.Min + style.FramePadding,
-    //     frame_bb.max - style.FramePadding);
-    // const ImRect total_bb = frame_bb;
-    // ItemSize(total_bb, style.FramePadding.y);
-    // if (!ItemAdd(total_bb, 0, &frame_bb))
-    //     return status;
-
-    // RenderFrame(
-    //     frame_bb.Min,
-    //     frame_bb.max,
-    //     GetColorU32(ImGuiCol_FrameBg),
-    //     true,
-    //     style.FrameRounding);
-
     if (conf.values.count > 0) {
         int res_w;
         if (conf.skip_small_lines)
@@ -68,16 +41,17 @@ void Plot(const char* label, const PlotConfig& conf) {
             float y1 = inner_bb.max.y;
             switch (conf.scale.type) {
             case PlotConfig::Scale::Linear: {
-                float cnt = conf.frame_size.x / conf.grid_x.size;
+                float cnt = conf.frame_size.x / (inner_bb.scale/5.0);
                 for (int i = 0; i < cnt; ++i) {
-                    float x0 = inner_bb.min.x + (i+1)*conf.grid_x.size;
+                    float x0 = inner_bb.min.x + (i+1)*(inner_bb.scale/5.0);
                     drawList->AddLine(
                         ImVec2(x0, y0),
                         ImVec2(x0, y1),
                         IM_COL32(200, 200, 200, (i % conf.grid_x.subticks) ? 128 : 255));
                     char numstr[21];
-                    sprintf(numstr, "%.0f", x0);
-                    drawList->AddText(NULL, 0.0f, ImVec2(x0, y0), IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                    // each maker is 0.2 meters
+                    sprintf(numstr, "%.1f", (i+1)*0.2);
+                    drawList->AddText(NULL, 0.0f, ImVec2(x0, y1), IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
                     // RenderTextClipped(ImVec2(x0, y0),  ImVec2(x0+200, y0+100), numstr, NULL, NULL, ImVec2(0.0f,0.0f));
                 }
                 break;
@@ -105,15 +79,15 @@ void Plot(const char* label, const PlotConfig& conf) {
         if (conf.grid_y.show) {
             float x0 = inner_bb.min.x;
             float x1 = inner_bb.max.x;
-            float cnt = conf.frame_size.y / (conf.grid_y.size );
+            float cnt = conf.frame_size.y / (inner_bb.scale/5.0);
             for (int i = 0; i < cnt; ++i) {
-                float y0 = inner_bb.min.y + (i+1)*conf.grid_y.size;
+                float y0 = inner_bb.max.y - (i+1)*(inner_bb.scale/5.0);
                 drawList->AddLine(
                     ImVec2(x0, y0),
                     ImVec2(x1, y0),
                     IM_COL32(0, 0, 0, (i % conf.grid_y.subticks) ? 16 : 64));
                 char numstr[21]; // enough to hold all numbers up to 64-bits
-                sprintf(numstr, "%.0f", y0);
+                sprintf(numstr, "%.1f", (i+1)*0.2);
                 drawList->AddText(NULL, 0.0f, ImVec2(x0, y0), IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
                 // RenderTextClipped(ImVec2(x0, y0),  ImVec2(x0+200, y0+100), numstr, NULL, NULL, ImVec2(0.0f,0.0f));
             }
@@ -137,7 +111,6 @@ void Plot(const char* label, const PlotConfig& conf) {
                 }else break;
             }
             count++;
-            printf("xxxxx %f\n", x0);
             // Point in the normalized space of our target rectangle
             ImVec2 pos0 = ImVec2(x0, y0);
             int pos1Flag = 0;
@@ -149,7 +122,6 @@ void Plot(const char* label, const PlotConfig& conf) {
                 float x1 = conf.values.xs[n];
                 float y1 = ys_list[i][n];
                 if ( ((ImAbs(x1)-0.03) < 0) && ((ImAbs(y1)-0.03) < 0) ){
-                    pos1Flag = 0;
                     continue;
                 }
                 pos1 = ImVec2(x1,y1);
@@ -160,15 +132,18 @@ void Plot(const char* label, const PlotConfig& conf) {
                     col_base,
                     conf.line_thickness);
                 char numstr[21]; // enough to hold all numbers up to 64-bits
-                sprintf(numstr, "%d[%.1f:%.1f]", nt- 1, pos0.x,pos0.y);
-                drawList->AddText(NULL, 0.0f, pos0, IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                sprintf(numstr, "%d[%.1f:%.1f]", nt- 1, ((pos0.x - inner_bb.min.x)/inner_bb.scale), ((inner_bb.max.y - pos0.y)/ inner_bb.scale) );
+                //drawList->AddText(NULL, 0.0f, pos0, IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                drawList->AddCircleFilled(pos0, 5, IM_COL32(255, 0, 0, 255));
                 pos0 = pos1;
                 nt++;
             }
-            if(1==pos1Flag){
+            if(pos1Flag ==1){
                 char numstr[21]; // enough to hold all numbers up to 64-bits
-                sprintf(numstr, "%d[%.1f:%.1f]", nt,pos1.x,pos1.y);
-                drawList->AddText(NULL, 0.0f, pos1, IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                sprintf(numstr, "%d[%.1f:%.1f]", nt, ((pos1.x - inner_bb.min.x)/inner_bb.scale), ((inner_bb.max.y - pos1.y)/ inner_bb.scale) );
+                // sprintf(numstr, "%d[%.1f:%.1f]", nt,pos1.x,pos1.y);
+                //drawList->AddText(NULL, 0.0f, pos1, IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                drawList->AddRectFilled(pos1, pos1 + ImVec2(8,8), IM_COL32(255, 0, 0, 255));
             }
 
         }
