@@ -36,9 +36,10 @@ void Plot(const char* label, const PlotConfig& conf) {
             x_max = conf.values.xs[size_t(x_max)];
         }
 
-        if (conf.grid_x.show) {
+        if (conf.grid_x.show) { //vetical line
             float y0 = inner_bb.min.y;
             float y1 = inner_bb.max.y;
+            float y2 = y1;
             switch (conf.scale.type) {
             case PlotConfig::Scale::Linear: {
                 float cnt = conf.frame_size.x / (inner_bb.scale/5.0);
@@ -51,7 +52,9 @@ void Plot(const char* label, const PlotConfig& conf) {
                     char numstr[21];
                     // each maker is 0.2 meters
                     sprintf(numstr, "%.1f", (i+1)*0.2);
-                    drawList->AddText(NULL, 0.0f, ImVec2(x0, y1), IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                    y2 = y1 + 10* (i%3);
+                    drawList->AddText(NULL, 0.0f, ImVec2(x0, y2),
+                        IM_COL32(0, 255, 0, 255), numstr, NULL, 0.0f, NULL);
                     // RenderTextClipped(ImVec2(x0, y0),  ImVec2(x0+200, y0+100), numstr, NULL, NULL, ImVec2(0.0f,0.0f));
                 }
                 break;
@@ -76,6 +79,7 @@ void Plot(const char* label, const PlotConfig& conf) {
             }
             }
         }
+        // horizonal line
         if (conf.grid_y.show) {
             float x0 = inner_bb.min.x;
             float x1 = inner_bb.max.x;
@@ -88,7 +92,16 @@ void Plot(const char* label, const PlotConfig& conf) {
                     IM_COL32(0, 0, 0, (i % conf.grid_y.subticks) ? 16 : 64));
                 char numstr[21]; // enough to hold all numbers up to 64-bits
                 sprintf(numstr, "%.1f", (i+1)*0.2);
-                drawList->AddText(NULL, 0.0f, ImVec2(x0, y0), IM_COL32(255, 0, 0, 255), numstr, NULL, 0.0f, NULL);
+                if(i%2==0)
+                    drawList->AddText(NULL, 0.0f, ImVec2(x0, y0), IM_COL32(0, 255, 0, 255),
+                    numstr, NULL, 0.0f, NULL);
+                else
+                {
+                    drawList->AddText(NULL, 0.0f, ImVec2(x1, y0), IM_COL32(0, 255, 0, 255),
+                    numstr, NULL, 0.0f, NULL);
+
+                }
+                
                 // RenderTextClipped(ImVec2(x0, y0),  ImVec2(x0+200, y0+100), numstr, NULL, NULL, ImVec2(0.0f,0.0f));
             }
         }
